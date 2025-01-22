@@ -1,12 +1,14 @@
+// !#/usr/bin/env node
+
 import { program } from 'commander'
 import inquirer from 'inquirer'
 import mongoose from 'mongoose'
 import 'dotenv/config.js'
 import preguntas from './inquirer.prompt.js'
 
-const conexion = process.env.MONGODB_URI || 'mongodb://localhost:27017/tasks'
 
 // conexion a la base de datos
+const conexion = process.env.MONGODB_URI || 'mongodb://localhost:27017/tasks'
 function connectDB () {
   mongoose.connect(conexion)
   console.log('connected to db')
@@ -19,14 +21,14 @@ connectDB()
 const tareaSchema = new mongoose.Schema(
   {
     tarea: { type: String, required: true },
-    descripcion: { type: String, required: true }
+    descripcion: { type: String, required: true },
+    completada: { type: Boolean, default: false }
   },
   {
     timestamps: true,
     versionKey: false
   }
 )
-
 const Tarea = mongoose.model('Tarea', tareaSchema)
 
 // add task
@@ -34,18 +36,23 @@ const addTask = async (tarea) => {
   const nuevaTarea = new Tarea(tarea)
   await nuevaTarea.save()
   console.log('Tarea guardada')
+  mongoose.connection.close()
+  process.exit(0)
 }
 const listTasks = async () => {
   const tareas = await Tarea.find()
   console.table(tareas.map((tarea) => ({
     // _id: tarea._id.toString(),
+    createdAt: new Date(tarea.createdAt).toLocaleDateString(),
     tarea: tarea.tarea,
     descripcion: tarea.descripcion
   })))
+  mongoose.connection.close()
+  process.exit(0)
 }
 
 
-const findTask = async () => {
+const editTask = async () => {
   const tareas = await Tarea.find()
   const choices = tareas.map((tarea, index) => ({
     name: `${tarea.tarea} - ${tarea.descripcion}`,
@@ -100,6 +107,8 @@ const findTask = async () => {
   } else {
     console.log('Saliendo...')
   }
+  mongoose.connection.close()
+  process.exit(0)
 }
 program.version('0.0.1').description('A CLI tool to manage tasks')
 
@@ -115,7 +124,7 @@ program.command('list').description('List all tasks').action(() => {
   listTasks()
 })
 program.command('edit').description('Find a task by id').action(() => {
-  findTask()
+  editTask()
 })
 
 program.parse(process.argv)
